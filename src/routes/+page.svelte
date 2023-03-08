@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { open } from '@tauri-apps/api/dialog';
-	import { createDir, exists, readDir, readTextFile, type FileEntry } from '@tauri-apps/api/fs';
-	// Check if the `$APPDATA/avatar.png` file exists
+	import {
+		createDir,
+		exists,
+		readDir,
+		readTextFile,
+		writeFile,
+		type FileEntry
+	} from '@tauri-apps/api/fs';
+	import { resolve } from '@tauri-apps/api/path';
 
 	let directoryPath = '';
 	let files: FileEntry[] = [];
@@ -28,7 +35,34 @@
 	const readFile = async () => {
 		fileContent = await readTextFile(selectedFile);
 	};
+
+	const createFile = async () => {
+		const fileName = 'tesst.md';
+		const filePath = await resolve(directoryPath, fileName);
+		await writeFile(filePath, '');
+		console.log('Hello');
+	};
+
+	const saveFile = async () => {
+		await writeFile(selectedFile, fileContent);
+	};
+
+	let activeKeys: { [key: string]: boolean } = {};
+
+	const handleKeyDown = (e: KeyboardEvent) => {
+		activeKeys[e.key] = true;
+
+		if (activeKeys['Control'] && activeKeys['s']) {
+			saveFile();
+		}
+	};
+
+	const handleKeyUp = (e: KeyboardEvent) => {
+		delete activeKeys[e.key];
+	};
 </script>
+
+<svelte:window on:keydown={handleKeyDown} on:keyup={handleKeyUp} />
 
 {#if directoryPath !== ''}
 	<p>{directoryPath}</p>
@@ -46,11 +80,17 @@
 				</button>
 			</li>
 		{/each}
+
+		<li>
+			<button
+				on:click={() => {
+					createFile();
+				}}>+</button
+			>
+		</li>
 	</ul>
 
-	<div>
-		{fileContent}
-	</div>
+	<div contenteditable="true" bind:innerHTML={fileContent} />
 
 	<button
 		on:click={() => {
