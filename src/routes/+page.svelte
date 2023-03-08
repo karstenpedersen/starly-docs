@@ -9,14 +9,36 @@
 		type FileEntry
 	} from '@tauri-apps/api/fs';
 	import { resolve } from '@tauri-apps/api/path';
+	import rehypeKatex from 'rehype-katex';
+	import rehypeStringify from 'rehype-stringify';
+	import remarkGfm from 'remark-gfm';
+	import remarkMath from 'remark-math';
+	import remarkParse from 'remark-parse';
+	import remarkRehype from 'remark-rehype';
+	import { onMount } from 'svelte';
+	import { unified } from 'unified';
+	import { reporter } from 'vfile-reporter';
 
-	let directoryPath = '';
+	let directoryPath = '/home/karsten/Documents/StarlyDocProject';
 	let files: FileEntry[] = [];
-	let selectedFile = '';
+	let selectedFile: FileEntry | null = null;
 	let fileContent = '';
+	let markdown = '';
+	let parseMessage = '';
+
+	let recentProjects: string[] = ['Hello'];
+
+	let createFileName = '';
+
+	onMount(() => {
+		if (directoryPath !== '') {
+			openProject(directoryPath);
+		}
+	});
 
 	const openDirectory = async () => {
 		directoryPath = ((await open({ directory: true })) as string) ?? '';
+		recentProjects.push(directoryPath);
 		await getFiles();
 	};
 
@@ -33,18 +55,22 @@
 	};
 
 	const readFile = async () => {
-		fileContent = await readTextFile(selectedFile);
+		if (selectedFile === null) return;
+
+		fileContent = await readTextFile(selectedFile.path);
 	};
 
 	const createFile = async () => {
-		const fileName = 'tesst.md';
-		const filePath = await resolve(directoryPath, fileName);
+		if (createFileName === '') return;
+
+		const filePath = await resolve(directoryPath, createFileName);
 		await writeFile(filePath, '');
-		console.log('Hello');
 	};
 
 	const saveFile = async () => {
-		await writeFile(selectedFile, fileContent);
+		if (selectedFile === null) return;
+
+		await writeFile(selectedFile.path, fileContent);
 	};
 
 	let activeKeys: { [key: string]: boolean } = {};
@@ -60,53 +86,135 @@
 	const handleKeyUp = (e: KeyboardEvent) => {
 		delete activeKeys[e.key];
 	};
+
+	const openProject = async (projectPath: string) => {
+		directoryPath = projectPath;
+		await getFiles();
+	};
+
+	const toMarkdown = async () => {
+		const file = await unified()
+			.use(remarkParse)
+			.use(remarkGfm)
+			.use(remarkMath)
+			.use(remarkRehype, { allowDangerousHtml: true })
+			.use(rehypeKatex)
+			.use(rehypeStringify)
+			.process(fileContent);
+
+		console.log(String(file));
+		parseMessage = reporter(file);
+		markdown = String(file);
+	};
+
+	$: {
+		fileContent;
+		toMarkdown();
+	}
 </script>
 
 <svelte:window on:keydown={handleKeyDown} on:keyup={handleKeyUp} />
 
 {#if directoryPath !== ''}
-	<p>{directoryPath}</p>
-	<p>{files.length}</p>
+	<div class="test">
+		<header class="bg-zinc-800 text-white flex items-center justify-between">
+			<p>{directoryPath}</p>
 
-	<ul>
-		{#each files as file}
-			<li>
-				<button
-					on:click={() => {
-						selectedFile = file.path;
-						readFile();
-					}}
-					>{file.name}
-				</button>
-			</li>
-		{/each}
-
-		<li>
 			<button
 				on:click={() => {
-					createFile();
-				}}>+</button
+					directoryPath = '';
+				}}>Exit Project</button
 			>
-		</li>
-	</ul>
+		</header>
 
-	<div contenteditable="true" bind:innerHTML={fileContent} />
+		<div class="content">
+			<aside class="bg-zinc-900 text-white p-3">
+				<ul>
+					{#each files as file}
+						<li>
+							<button
+								on:click={() => {
+									selectedFile = file;
+									readFile();
+								}}
+								>{file.name}
+							</button>
+						</li>
+					{/each}
 
-	<button
-		on:click={() => {
-			directoryPath = '';
-		}}>Exit Project</button
-	>
+					<li>
+						<form
+							on:submit={() => {
+								createFile();
+							}}
+						>
+							<input
+								type="text"
+								bind:value={createFileName}
+								placeholder="File name"
+								class="w-full text-zinc-900"
+							/>
+						</form>
+					</li>
+				</ul>
+			</aside>
+
+			<main class="h-full">
+				<div class="p-3 flex items-center justify-between">
+					<h1 class="text-xl">{selectedFile?.name}</h1>
+					<p>Settings</p>
+				</div>
+
+				<div class="grid md:grid-cols-2 gap-1 h-full overflow-hidden">
+					<textarea bind:value={fileContent} class="overflow-scroll p-3 outline-none" />
+					<div class="p-3 prose prose-zinc bg-white overflow-scroll">
+						{@html markdown}
+					</div>
+				</div>
+			</main>
+		</div>
+
+		<footer class="bg-zinc-900 text-white">
+			<p>{parseMessage}</p>
+		</footer>
+	</div>
 {:else}
-	<section>
+	<section class="grid gap-4 place-content-center h-screen">
 		<h1>Starly Docs</h1>
 
 		<div>
 			<button on:click={openDirectory}>Open Project</button>
 			<button on:click={createDirectory}>Create Project</button>
 		</div>
+
+		{#if recentProjects.length > 0}
+			<div>
+				<h2>Recent Projects</h2>
+				<ul class="flex flex-col gap-1">
+					{#each recentProjects as project}
+						<button
+							on:click={() => {
+								openProject(project);
+							}}
+							class="text-left">{project}</button
+						>
+					{/each}
+				</ul>
+			</div>
+		{/if}
 	</section>
 {/if}
 
 <style>
+	.test {
+		height: 100dvh;
+		display: grid;
+		grid-template-rows: auto 1fr auto;
+	}
+
+	.content {
+		height: 100%;
+		display: grid;
+		grid-template-columns: 150px 1fr;
+	}
 </style>
