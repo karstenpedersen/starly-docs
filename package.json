@@ -37,7 +37,9 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@codemirror/lang-javascript": "^6.1.4",
 		"@tauri-apps/api": "^1.2.0",
+		"codemirror": "^6.0.1",
 		"r": "^0.0.5",
 		"rehype-document": "^6.1.0",
 		"rehype-format": "^4.0.1",
@@ -49,6 +51,7 @@
 		"remark-parse": "^10.0.1",
 		"remark-rehype": "^10.1.0",
 		"remark-toc": "^8.0.1",
+		"svelte-codemirror-editor": "^1.1.0",
 		"unified": "^10.1.2",
 		"unified-stream": "^2.0.0",
 		"vfile-reporter": "^7.0.5"

@@ -19,6 +19,9 @@
 	import { unified } from 'unified';
 	import { reporter } from 'vfile-reporter';
 
+	import { javascript } from '@codemirror/lang-javascript';
+	import CodeMirror from 'svelte-codemirror-editor';
+
 	let directoryPath = '/home/karsten/Documents/StarlyDocProject';
 	let files: FileEntry[] = [];
 	let selectedFile: FileEntry | null = null;
@@ -166,7 +169,7 @@
 				</div>
 
 				<div class="grid md:grid-cols-2 gap-1 h-full overflow-hidden">
-					<textarea bind:value={fileContent} class="overflow-scroll p-3 outline-none" />
+					<CodeMirror bind:value={fileContent} lang={javascript()} />
 					<div class="p-3 prose prose-zinc bg-white overflow-scroll">
 						{@html markdown}
 					</div>
